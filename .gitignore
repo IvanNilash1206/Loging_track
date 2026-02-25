@@ -1,0 +1,60 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## NuGet
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nupkg
+**/NuGetFallbackFolder
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+## IDE
+.vs/
+.vscode/
+*.swp
+*~
+.idea/
+
+## User-specific
+*.rsuser
+*.suo
+*.user
+*.sln.docstates
+
+## Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+## Secrets
+appsettings.Production.json
+appsettings.Local.json
+
+## Firebase service account key — NEVER commit this
+**/firebase-service-account.json
+**/serviceAccountKey.json
+**/*-firebase-adminsdk-*.json

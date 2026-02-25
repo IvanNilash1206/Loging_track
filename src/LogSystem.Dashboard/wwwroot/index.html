@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSystem Dashboard</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --border: #2a2d3a;
+            --text: #e4e6eb;
+            --text-dim: #8b8fa3;
+            --accent: #4f8ff7;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --success: #2ecc71;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .header .meta {
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Summary Cards */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card .label {
+            color: var(--text-dim);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .card .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .card .value.danger { color: var(--danger); }
+        .card .value.warning { color: var(--warning); }
+        .card .value.success { color: var(--success); }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover { color: var(--text); }
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(79, 143, 247, 0.1);
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: rgba(79, 143, 247, 0.05); }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.normal { background: rgba(46, 204, 113, 0.15); color: var(--success); }
+        .badge.warning { background: rgba(243, 156, 18, 0.15); color: var(--warning); }
+        .badge.danger { background: rgba(231, 76, 60, 0.15); color: var(--danger); }
+        .badge.critical { background: rgba(231, 76, 60, 0.3); color: #ff6b6b; }
+
+        .hidden { display: none; }
+
+        .refresh-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .refresh-btn:hover { opacity: 0.9; }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        select {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+
+        .mono { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>&#128274; LogSystem Dashboard</h1>
+    <div class="meta">
+        <span id="lastRefresh">—</span>
+        &nbsp;|&nbsp;
+        <button class="refresh-btn" onclick="refreshAll()">&#x21bb; Refresh</button>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Summary Cards -->
+    <div class="cards" id="summaryCards">
+        <div class="card"><div class="label">Active Devices</div><div class="value" id="activeDevices">—</div></div>
+        <div class="card"><div class="label">Total Alerts (24h)</div><div class="value warning" id="totalAlerts">—</div></div>
+        <div class="card"><div class="label">Critical Alerts</div><div class="value danger" id="criticalAlerts">—</div></div>
+        <div class="card"><div class="label">File Events</div><div class="value" id="fileEventsCount">—</div></div>
+        <div class="card"><div class="label">Flagged Files</div><div class="value warning" id="flaggedFiles">—</div></div>
+        <div class="card"><div class="label">Network Events</div><div class="value" id="networkEventsCount">—</div></div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button class="tab active" data-tab="alerts" onclick="switchTab('alerts')">Alerts</button>
+        <button class="tab" data-tab="files" onclick="switchTab('files')">File Events</button>
+        <button class="tab" data-tab="network" onclick="switchTab('network')">Network</button>
+        <button class="tab" data-tab="apps" onclick="switchTab('apps')">App Usage</button>
+        <button class="tab" data-tab="devices" onclick="switchTab('devices')">Devices</button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <select id="deviceFilter" onchange="refreshAll()">
+            <option value="">All Devices</option>
+        </select>
+        <select id="timeRange" onchange="refreshAll()">
+            <option value="1">Last 1 hour</option>
+            <option value="6">Last 6 hours</option>
+            <option value="24" selected>Last 24 hours</option>
+            <option value="72">Last 3 days</option>
+            <option value="168">Last 7 days</option>
+        </select>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="tab-alerts" class="tab-content">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Severity</th>
+                        <th>Type</th>
+                        <th>Device</th>
+                        <th>User</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="alertsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-files" class="tab-content hidden">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Device</th>
+                        <th>User</th>
+                        <th>File</th>
+                        <th>Action</th>
+                        <th>Size</th>
+                        <th>Process</th>
+                        <th>Flag</th>
+                    </tr>
+                </thead>
+                <tbody id="filesTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-network" class="tab-content hidden">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Device</th>
+                        <th>Process</th>
+                        <th>Sent</th>
+                        <th>Received</th>
+                        <th>Destination</th>
+                        <th>Duration</th>
+                        <th>Flag</th>
+                    </tr>
+                </thead>
+                <tbody id="networkTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-apps" class="tab-content hidden">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Device</th>
+                        <th>User</th>
+                        <th>Application</th>
+                        <th>Window Title</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="appsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-devices" class="tab-content hidden">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Device ID</th>
+                        <th>Hostname</th>
+                        <th>User</th>
+                        <th>OS</th>
+                        <th>Agent Version</th>
+                        <th>Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody id="devicesTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = '';  // Same origin
+
+    function switchTab(name) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+        document.getElementById(`tab-${name}`).classList.remove('hidden');
+    }
+
+    function getParams() {
+        const hours = document.getElementById('timeRange').value;
+        const deviceId = document.getElementById('deviceFilter').value;
+        let params = `hours=${hours}`;
+        if (deviceId) params += `&deviceId=${encodeURIComponent(deviceId)}`;
+        return params;
+    }
+
+    function formatTime(ts) {
+        return new Date(ts).toLocaleString();
+    }
+
+    function formatBytes(bytes) {
+        if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+        if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
+        if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return bytes + ' B';
+    }
+
+    function formatDuration(seconds) {
+        if (seconds >= 3600) return (seconds / 3600).toFixed(1) + 'h';
+        if (seconds >= 60) return (seconds / 60).toFixed(1) + 'm';
+        return seconds.toFixed(0) + 's';
+    }
+
+    function severityBadge(sev) {
+        const cls = { Critical: 'critical', High: 'danger', Medium: 'warning', Low: 'normal' }[sev] || 'normal';
+        return `<span class="badge ${cls}">${sev}</span>`;
+    }
+
+    function flagBadge(flag) {
+        if (!flag || flag === 'Normal') return '<span class="badge normal">Normal</span>';
+        const cls = flag.includes('Upload') ? 'critical' : 'danger';
+        return `<span class="badge ${cls}">${flag}</span>`;
+    }
+
+    async function fetchJSON(url) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch { return null; }
+    }
+
+    async function refreshAll() {
+        const params = getParams();
+        document.getElementById('lastRefresh').textContent = 'Refreshing...';
+
+        // Summary
+        const summary = await fetchJSON(`${API}/api/dashboard/summary?${params}`);
+        if (summary) {
+            document.getElementById('activeDevices').textContent = summary.activeDevices;
+            document.getElementById('totalAlerts').textContent = summary.totalAlerts;
+            document.getElementById('criticalAlerts').textContent = summary.criticalAlerts;
+            document.getElementById('fileEventsCount').textContent = summary.fileEvents;
+            document.getElementById('flaggedFiles').textContent = summary.flaggedFiles;
+            document.getElementById('networkEventsCount').textContent = summary.networkEvents;
+        }
+
+        // Devices dropdown
+        const devices = await fetchJSON(`${API}/api/dashboard/devices`);
+        if (devices) {
+            const sel = document.getElementById('deviceFilter');
+            const current = sel.value;
+            sel.innerHTML = '<option value="">All Devices</option>';
+            devices.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId;
+                opt.textContent = `${d.hostname} (${d.user})`;
+                sel.appendChild(opt);
+            });
+            sel.value = current;
+
+            // Devices tab
+            document.getElementById('devicesTable').innerHTML = devices.map(d => `
+                <tr>
+                    <td class="mono">${d.deviceId}</td>
+                    <td>${d.hostname}</td>
+                    <td>${d.user}</td>
+                    <td>${d.osVersion}</td>
+                    <td>${d.agentVersion}</td>
+                    <td>${formatTime(d.lastSeen)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="6" class="empty-state">No devices registered</td></tr>';
+        }
+
+        // Alerts
+        const alerts = await fetchJSON(`${API}/api/dashboard/alerts?${params}&limit=100`);
+        if (alerts) {
+            document.getElementById('alertsTable').innerHTML = alerts.map(a => `
+                <tr>
+                    <td class="mono">${formatTime(a.timestamp)}</td>
+                    <td>${severityBadge(a.severity)}</td>
+                    <td>${a.alertType}</td>
+                    <td class="mono">${a.deviceId}</td>
+                    <td>${a.user}</td>
+                    <td>${a.description}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="6" class="empty-state">No alerts</td></tr>';
+        }
+
+        // File Events
+        const files = await fetchJSON(`${API}/api/dashboard/file-events?${params}&limit=200`);
+        if (files) {
+            document.getElementById('filesTable').innerHTML = files.map(f => `
+                <tr>
+                    <td class="mono">${formatTime(f.timestamp)}</td>
+                    <td class="mono">${f.deviceId}</td>
+                    <td>${f.user}</td>
+                    <td title="${f.fullPath}">${f.fileName}</td>
+                    <td>${f.actionType}</td>
+                    <td>${formatBytes(f.fileSize)}</td>
+                    <td>${f.processName}</td>
+                    <td>${flagBadge(f.flag)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="8" class="empty-state">No file events</td></tr>';
+        }
+
+        // Network Events
+        const net = await fetchJSON(`${API}/api/dashboard/network-events?${params}&limit=200`);
+        if (net) {
+            document.getElementById('networkTable').innerHTML = net.map(n => `
+                <tr>
+                    <td class="mono">${formatTime(n.timestamp)}</td>
+                    <td class="mono">${n.deviceId}</td>
+                    <td>${n.processName}</td>
+                    <td>${formatBytes(n.bytesSent)}</td>
+                    <td>${formatBytes(n.bytesReceived)}</td>
+                    <td class="mono">${n.destinationIp}:${n.destinationPort}</td>
+                    <td>${formatDuration(n.durationSeconds)}</td>
+                    <td>${flagBadge(n.flag)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="8" class="empty-state">No network events</td></tr>';
+        }
+
+        // App Usage
+        const apps = await fetchJSON(`${API}/api/dashboard/app-usage?${params}&limit=200`);
+        if (apps) {
+            document.getElementById('appsTable').innerHTML = apps.map(a => `
+                <tr>
+                    <td class="mono">${formatTime(a.startTime)}</td>
+                    <td class="mono">${a.deviceId}</td>
+                    <td>${a.user}</td>
+                    <td>${a.applicationName}</td>
+                    <td title="${a.windowTitle}">${a.windowTitle.length > 80 ? a.windowTitle.substring(0, 80) + '...' : a.windowTitle}</td>
+                    <td>${formatDuration(a.durationSeconds)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="6" class="empty-state">No app usage data</td></tr>';
+        }
+
+        document.getElementById('lastRefresh').textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
+    }
+
+    // Initial load
+    refreshAll();
+    // Auto-refresh every 60 seconds
+    setInterval(refreshAll, 60000);
+</script>
+
+</body>
+</html>
