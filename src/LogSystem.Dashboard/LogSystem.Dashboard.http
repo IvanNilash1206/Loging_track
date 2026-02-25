@@ -1,6 +1,16 @@
-@LogSystem.Dashboard_HostAddress = http://localhost:5176
+@LogSystem.Dashboard_HostAddress = http://192.168.0.169:5176
 
-GET {{LogSystem.Dashboard_HostAddress}}/weatherforecast/
+GET {{LogSystem.Dashboard_HostAddress}}/api/dashboard/summary
+Accept: application/json
+
+###
+
+GET {{LogSystem.Dashboard_HostAddress}}/api/dashboard/devices
+Accept: application/json
+
+###
+
+GET {{LogSystem.Dashboard_HostAddress}}/api/dashboard/alerts
 Accept: application/json
 
 ###

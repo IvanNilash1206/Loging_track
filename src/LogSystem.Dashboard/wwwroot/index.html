@@ -355,7 +355,18 @@
     }
 
     function formatTime(ts) {
-        return new Date(ts).toLocaleString();
+        if (!ts) return '—';
+        // Handle Firestore {seconds, nanos} format (fallback)
+        if (ts.seconds !== undefined) {
+            return new Date(ts.seconds * 1000 + (ts.nanos || 0) / 1000000).toLocaleString();
+        }
+        const d = new Date(ts);
+        return isNaN(d.getTime()) ? String(ts) : d.toLocaleString();
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     function formatBytes(bytes) {
@@ -385,9 +396,16 @@
     async function fetchJSON(url) {
         try {
             const res = await fetch(url);
-            if (!res.ok) return null;
+            if (!res.ok) {
+                if (res.status === 429) {
+                    console.warn('Firestore quota exceeded, showing cached/empty data');
+                    return null;
+                }
+                console.error(`API error ${res.status}: ${await res.text()}`);
+                return null;
+            }
             return await res.json();
-        } catch { return null; }
+        } catch(e) { console.error('Fetch error:', e); return null; }
     }
 
     async function refreshAll() {
@@ -422,11 +440,11 @@
             // Devices tab
             document.getElementById('devicesTable').innerHTML = devices.map(d => `
                 <tr>
-                    <td class="mono">${d.deviceId}</td>
-                    <td>${d.hostname}</td>
-                    <td>${d.user}</td>
-                    <td>${d.osVersion}</td>
-                    <td>${d.agentVersion}</td>
+                    <td class="mono">${escapeHtml(d.deviceId)}</td>
+                    <td>${escapeHtml(d.hostname)}</td>
+                    <td>${escapeHtml(d.user)}</td>
+                    <td>${escapeHtml(d.osVersion)}</td>
+                    <td>${escapeHtml(d.agentVersion)}</td>
                     <td>${formatTime(d.lastSeen)}</td>
                 </tr>
             `).join('') || '<tr><td colspan="6" class="empty-state">No devices registered</td></tr>';
@@ -439,10 +457,10 @@
                 <tr>
                     <td class="mono">${formatTime(a.timestamp)}</td>
                     <td>${severityBadge(a.severity)}</td>
-                    <td>${a.alertType}</td>
-                    <td class="mono">${a.deviceId}</td>
-                    <td>${a.user}</td>
-                    <td>${a.description}</td>
+                    <td>${escapeHtml(a.alertType)}</td>
+                    <td class="mono">${escapeHtml(a.deviceId)}</td>
+                    <td>${escapeHtml(a.user)}</td>
+                    <td>${escapeHtml(a.description)}</td>
                 </tr>
             `).join('') || '<tr><td colspan="6" class="empty-state">No alerts</td></tr>';
         }
@@ -453,12 +471,12 @@
             document.getElementById('filesTable').innerHTML = files.map(f => `
                 <tr>
                     <td class="mono">${formatTime(f.timestamp)}</td>
-                    <td class="mono">${f.deviceId}</td>
-                    <td>${f.user}</td>
-                    <td title="${f.fullPath}">${f.fileName}</td>
-                    <td>${f.actionType}</td>
+                    <td class="mono">${escapeHtml(f.deviceId)}</td>
+                    <td>${escapeHtml(f.user)}</td>
+                    <td title="${escapeHtml(f.fullPath)}">${escapeHtml(f.fileName)}</td>
+                    <td>${escapeHtml(f.actionType)}</td>
                     <td>${formatBytes(f.fileSize)}</td>
-                    <td>${f.processName}</td>
+                    <td>${escapeHtml(f.processName)}</td>
                     <td>${flagBadge(f.flag)}</td>
                 </tr>
             `).join('') || '<tr><td colspan="8" class="empty-state">No file events</td></tr>';
@@ -470,11 +488,11 @@
             document.getElementById('networkTable').innerHTML = net.map(n => `
                 <tr>
                     <td class="mono">${formatTime(n.timestamp)}</td>
-                    <td class="mono">${n.deviceId}</td>
-                    <td>${n.processName}</td>
+                    <td class="mono">${escapeHtml(n.deviceId)}</td>
+                    <td>${escapeHtml(n.processName)}</td>
                     <td>${formatBytes(n.bytesSent)}</td>
                     <td>${formatBytes(n.bytesReceived)}</td>
-                    <td class="mono">${n.destinationIp}:${n.destinationPort}</td>
+                    <td class="mono">${escapeHtml(n.destinationIp)}:${n.destinationPort}</td>
                     <td>${formatDuration(n.durationSeconds)}</td>
                     <td>${flagBadge(n.flag)}</td>
                 </tr>
@@ -487,10 +505,10 @@
             document.getElementById('appsTable').innerHTML = apps.map(a => `
                 <tr>
                     <td class="mono">${formatTime(a.startTime)}</td>
-                    <td class="mono">${a.deviceId}</td>
-                    <td>${a.user}</td>
-                    <td>${a.applicationName}</td>
-                    <td title="${a.windowTitle}">${a.windowTitle.length > 80 ? a.windowTitle.substring(0, 80) + '...' : a.windowTitle}</td>
+                    <td class="mono">${escapeHtml(a.deviceId)}</td>
+                    <td>${escapeHtml(a.user)}</td>
+                    <td>${escapeHtml(a.applicationName)}</td>
+                    <td title="${escapeHtml(a.windowTitle)}">${escapeHtml(a.windowTitle.length > 80 ? a.windowTitle.substring(0, 80) + '...' : a.windowTitle)}</td>
                     <td>${formatDuration(a.durationSeconds)}</td>
                 </tr>
             `).join('') || '<tr><td colspan="6" class="empty-state">No app usage data</td></tr>';
